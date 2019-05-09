@@ -1,11 +1,6 @@
 SET serveroutput ON;
-
-CREATE OR REPLACE PACKAGE ANALYSIS_PKG IS 
-    PROCEDURE ANALYZE_TEST(p_registrationno registration.registrationno%TYPE);
-END ANALYSIS_PKG;
-
-CREATE OR REPLACE PACKAGE BODY ANALYSIS_PKG IS 
-    PROCEDURE ANALYZE_TEST(p_registrationno registration.registrationno%TYPE) IS
+    --regisid--
+    CREATE OR REPLACE  PROCEDURE ANALYZE_TEST(p_registrationno registration.registrationno%TYPE) IS
         v_correct_count NUMBER := 0;
         v_maxscore NUMBER := 0;
         CURSOR regisid_cur (p_registrationno_cur registration.registrationno%TYPE) IS
@@ -14,7 +9,6 @@ CREATE OR REPLACE PACKAGE BODY ANALYSIS_PKG IS
             JOIN questionbank qb on qt.questionid = qb.questionid
             WHERE qt.registrationno = p_registrationno;
         regisid_rec regisid_cur%ROWTYPE;
-
     BEGIN
         OPEN regisid_cur(p_registrationno);
         LOOP
@@ -34,6 +28,5 @@ CREATE OR REPLACE PACKAGE BODY ANALYSIS_PKG IS
         CLOSE regisid_cur;
         DBMS_OUTPUT.PUT_LINE('Score of ' || regisid_rec.registrationno || ' is ' || v_correct_count || ' / ' ||  v_maxscore);
     END ANALYZE_TEST;
-END ANALYSIS_PKG;
 
-EXECUTE ANALYSIS_PKG.ANALYZE_TEST(300001);
+EXECUTE ANALYZE_TEST(300001);
