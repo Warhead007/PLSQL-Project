@@ -1,13 +1,18 @@
 SET serveroutput ON;
 
-
 CREATE OR REPLACE  PROCEDURE ANALYZE_TEST(p_registrationno registration.registrationno%TYPE) IS
-    v_question_id NUMBER := 0;
     v_correct_count NUMBER := 0;
     v_maxscore NUMBER := 0;
     v_regisnum NUMBER := p_registrationno;
+    v_sub registration.subjectcode%TYPE;
     v_ans NUMBER := 0;
     v_test NUMBER := 0;
+    v_ans_text answerbank.answer%TYPE;
+    v_test_text answerbank.answer%TYPE;
+    v_a_text answerbank.answer%TYPE;
+    v_b_text answerbank.answer%TYPE;
+    v_c_text answerbank.answer%TYPE;
+    v_d_text answerbank.answer%TYPE;
     CURSOR regisid_cur (p_registrationno_cur registration.registrationno%TYPE) IS
         SELECT r.subjectcode,r.testdate,qt.a_id,qt.b_id,qt.c_id,qt.d_id,qt.answer,
         qt.testanswer,qb.chapter,qt.questionid,qb.question,qt.registrationno
@@ -17,6 +22,7 @@ CREATE OR REPLACE  PROCEDURE ANALYZE_TEST(p_registrationno registration.registra
         WHERE qt.registrationno = p_registrationno;
     regisid_rec regisid_cur%ROWTYPE;
     
+    v_other_ques NUMBER := 0;
     v_true_count NUMBER := 0;
     v_false_count NUMBER := 0;
     v_regis_id NUMBER := 0;
@@ -29,14 +35,18 @@ CREATE OR REPLACE  PROCEDURE ANALYZE_TEST(p_registrationno registration.registra
     v_c_count NUMBER := 0;
     v_d_count NUMBER := 0;
     CURSOR other_regis_cur IS
-        SELECT r.subjectcode,r.testdate,qt.a_id,qt.b_id,qt.c_id,qt.d_id,qt.answer,qt.testanswer,qt.questionid
+        SELECT r.subjectcode,r.testdate,qt.a_id,qt.b_id,qt.c_id,qt.d_id,qt.answer,qt.testanswer,qt.questionid,qb.question
         FROM registration r
-        JOIN questiontest qt ON r.registrationno = qt.registrationno;
-    --other_regis_rec other_regis_cur%ROWTYPE;
+        JOIN questiontest qt ON r.registrationno = qt.registrationno
+        JOIN questionbank qb ON qt.questionid = qb.questionid;
     
     BEGIN
+        SELECT subjectcode INTO v_sub
+        FROM registration
+        WHERE registrationno = p_registrationno;
         OPEN regisid_cur(p_registrationno);
         DBMS_OUTPUT.PUT_LINE('Registation ID: ' || v_regisnum);
+        DBMS_OUTPUT.PUT_LINE('Subject: ' || v_sub);
         DBMS_OUTPUT.PUT_LINE('');
         LOOP
             FETCH regisid_cur INTO regisid_rec;
@@ -92,7 +102,6 @@ CREATE OR REPLACE  PROCEDURE ANALYZE_TEST(p_registrationno registration.registra
                 END CASE;
             END IF;
             
-            v_question_id := regisid_rec.questionid;
             v_true_count := 0;
             v_false_count := 0;
             v_a_count := 0;
@@ -103,35 +112,64 @@ CREATE OR REPLACE  PROCEDURE ANALYZE_TEST(p_registrationno registration.registra
             FOR other_regis_rec IN other_regis_cur LOOP
                 IF regisid_rec.subjectcode = other_regis_rec.subjectcode
                 AND regisid_rec.testdate = other_regis_rec.testdate
-                AND v_question_id = other_regis_rec.questionid THEN
+                AND regisid_rec.questionid = other_regis_rec.questionid THEN
+                v_a_id := regisid_rec.a_id;
+                v_b_id := regisid_rec.b_id;
+                v_c_id := regisid_rec.c_id;
+                v_d_id := regisid_rec.d_id;
                 CASE
                     WHEN other_regis_rec.testanswer = 'A' THEN
                         v_regis_id := other_regis_rec.a_id;
-                        v_a_id := other_regis_rec.a_id;
-                        v_a_count := v_a_count + 1;
                     WHEN other_regis_rec.testanswer = 'B' THEN
-                        v_regis_id := other_regis_rec.b_id;
-                        v_b_id := other_regis_rec.a_id;
-                        v_b_count := v_b_count + 1;
+                        v_regis_id := other_regis_rec.b_id;    
                     WHEN other_regis_rec.testanswer = 'C' THEN
                         v_regis_id := other_regis_rec.c_id;
-                        v_c_id := other_regis_rec.a_id;
-                        v_c_count := v_c_count + 1;
                     ELSE
                         v_regis_id := other_regis_rec.d_id;
-                        v_d_id := other_regis_rec.a_id;
-                        v_d_count := v_d_count + 1;
                 END CASE;
+                CASE
+                    WHEN v_regis_id = v_a_id THEN
+                        v_a_count := v_a_count + 1;
+                    WHEN v_regis_id = v_b_id THEN
+                        v_b_count := v_b_count + 1;
+                    WHEN v_regis_id = v_c_id THEN
+                        v_c_count := v_c_count + 1;
+                    ELSE
+                        v_d_count := v_d_count + 1;
+                    END CASE;
                 IF v_regis_id = v_ans THEN
                     v_true_count := v_true_count + 1;
                 ELSIF  v_regis_id != v_ans THEN
                     v_false_count := v_false_count + 1;
                 END IF;
+                    v_other_ques := other_regis_rec.questionid;
                 END IF;
             END LOOP;
+            
+            SELECT answer INTO v_ans_text
+            FROM answerbank
+            WHERE answerid = v_ans;
+            SELECT answer INTO v_test_text
+            FROM answerbank
+            WHERE answerid = v_test;
+            
+            SELECT answer INTO v_a_text
+            FROM answerbank
+            WHERE answerid = v_a_id;
+            SELECT answer INTO v_b_text
+            FROM answerbank
+            WHERE answerid = v_b_id;
+            SELECT answer INTO v_c_text
+            FROM answerbank
+            WHERE answerid = v_c_id;
+            SELECT answer INTO v_d_text
+            FROM answerbank
+            WHERE answerid = v_d_id;
+            DBMS_OUTPUT.PUT_LINE('');
+            DBMS_OUTPUT.PUT_LINE('Chapter: ' || regisid_rec.chapter);
             DBMS_OUTPUT.PUT_LINE('Question: ' || regisid_rec.question);
-            DBMS_OUTPUT.PUT_LINE('Subject Code: ' || regisid_rec.subjectcode || ' Chapter: ' || regisid_rec.chapter 
-                                 || ' Correct answer ID: ' || v_ans || ' User answer ID: ' || v_test);
+            DBMS_OUTPUT.PUT_LINE('Correct answer: ' || v_ans_text);
+            DBMS_OUTPUT.PUT_LINE('User answer: ' || v_test_text);
             ----Count score----
             IF regisid_rec.answer = regisid_rec.testanswer THEN 
                 v_correct_count := v_correct_count + 1;
@@ -140,14 +178,17 @@ CREATE OR REPLACE  PROCEDURE ANALYZE_TEST(p_registrationno registration.registra
                 DBMS_OUTPUT.PUT_LINE('User answer is uncorrect');
             END IF;
             v_maxscore := v_maxscore + 1;
-            DBMS_OUTPUT.PUT_LINE('Other user answer correct: ' || v_true_count);
-            DBMS_OUTPUT.PUT_LINE('Other user answer uncorrect: ' || v_false_count);
-            DBMS_OUTPUT.PUT_LINE('-----Other user choose------');
-            DBMS_OUTPUT.PUT_LINE(v_a_id || ' ' || v_a_count);
-            DBMS_OUTPUT.PUT_LINE(v_b_id || ' ' || v_b_count);
-            DBMS_OUTPUT.PUT_LINE(v_c_id || ' ' || v_c_count);
-            DBMS_OUTPUT.PUT_LINE(v_d_id || ' ' || v_d_count);
+            DBMS_OUTPUT.PUT_LINE('-----All users result------');
+            DBMS_OUTPUT.PUT_LINE('All users answer correct: ' || v_true_count);
+            DBMS_OUTPUT.PUT_LINE('All users answer uncorrect: ' || v_false_count);
+            DBMS_OUTPUT.PUT_LINE('-----All users choose------');
+            DBMS_OUTPUT.PUT_LINE(v_a_text || ' : ' || v_a_count);
+            DBMS_OUTPUT.PUT_LINE(v_b_text || ' : ' || v_b_count);
+            DBMS_OUTPUT.PUT_LINE(v_c_text || ' : ' || v_c_count);
+            DBMS_OUTPUT.PUT_LINE(v_d_text || ' : ' || v_d_count);
+
         END LOOP;
+        DBMS_OUTPUT.PUT_LINE('');
         DBMS_OUTPUT.PUT_LINE('Score of ' || regisid_rec.registrationno || ' is ' || v_correct_count || ' / ' ||  v_maxscore);
         CLOSE regisid_cur;
     END ANALYZE_TEST;
