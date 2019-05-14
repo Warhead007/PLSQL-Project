@@ -9,10 +9,7 @@ CREATE OR REPLACE  PROCEDURE ANALYZE_TEST(p_registrationno registration.registra
     v_test NUMBER := 0;
     v_ans_text answerbank.answer%TYPE;
     v_test_text answerbank.answer%TYPE;
-    v_a_text answerbank.answer%TYPE;
-    v_b_text answerbank.answer%TYPE;
-    v_c_text answerbank.answer%TYPE;
-    v_d_text answerbank.answer%TYPE;
+
     CURSOR regisid_cur (p_registrationno_cur registration.registrationno%TYPE) IS
         SELECT r.subjectcode,r.testdate,qt.a_id,qt.b_id,qt.c_id,qt.d_id,qt.answer,
         qt.testanswer,qb.chapter,qt.questionid,qb.question,qt.registrationno
@@ -26,14 +23,7 @@ CREATE OR REPLACE  PROCEDURE ANALYZE_TEST(p_registrationno registration.registra
     v_true_count NUMBER := 0;
     v_false_count NUMBER := 0;
     v_regis_id NUMBER := 0;
-    v_a_id NUMBER := 0;
-    v_b_id NUMBER := 0;
-    v_c_id NUMBER := 0;
-    v_d_id NUMBER := 0;
-    v_a_count NUMBER := 0;
-    v_b_count NUMBER := 0;
-    v_c_count NUMBER := 0;
-    v_d_count NUMBER := 0;
+
     CURSOR other_regis_cur IS
         SELECT r.subjectcode,r.testdate,qt.a_id,qt.b_id,qt.c_id,qt.d_id,qt.answer,qt.testanswer,qt.questionid,qb.question
         FROM registration r
@@ -41,6 +31,7 @@ CREATE OR REPLACE  PROCEDURE ANALYZE_TEST(p_registrationno registration.registra
         JOIN questionbank qb ON qt.questionid = qb.questionid;
     
 BEGIN
+    ----Select subject code for show----
     SELECT subjectcode INTO v_sub
     FROM registration
     WHERE registrationno = p_registrationno;
@@ -48,10 +39,11 @@ BEGIN
     DBMS_OUTPUT.PUT_LINE('Registation ID: ' || v_regisnum);
     DBMS_OUTPUT.PUT_LINE('Subject: ' || v_sub);
     DBMS_OUTPUT.PUT_LINE('');
+    ----Loop for query select's register question----
     LOOP
         FETCH regisid_cur INTO regisid_rec;
         EXIT WHEN regisid_cur%NOTFOUND;
-        ----Analysis answer----
+        ----Analysis answer of select's register----
         IF regisid_rec.answer = 'A' THEN
             v_ans := regisid_rec.a_id;
             CASE
@@ -104,20 +96,12 @@ BEGIN
             
         v_true_count := 0;
         v_false_count := 0;
-            
-        v_a_count := 0;
-        v_b_count := 0;
-        v_c_count := 0;
-        v_d_count := 0;
-            
+        
+        ----Loop for query other user who have same question----
         FOR other_regis_rec IN other_regis_cur LOOP
             IF regisid_rec.subjectcode = other_regis_rec.subjectcode
             AND regisid_rec.testdate = other_regis_rec.testdate
             AND regisid_rec.questionid = other_regis_rec.questionid THEN
-            v_a_id := regisid_rec.a_id;
-            v_b_id := regisid_rec.b_id;
-            v_c_id := regisid_rec.c_id;
-            v_d_id := regisid_rec.d_id;
             CASE
                 WHEN other_regis_rec.testanswer = 'A' THEN
                     v_regis_id := other_regis_rec.a_id;
@@ -128,16 +112,7 @@ BEGIN
                 ELSE
                     v_regis_id := other_regis_rec.d_id;
             END CASE;
-            CASE
-                WHEN v_regis_id = v_a_id THEN
-                    v_a_count := v_a_count + 1;
-                WHEN v_regis_id = v_b_id THEN
-                    v_b_count := v_b_count + 1;
-                WHEN v_regis_id = v_c_id THEN
-                    v_c_count := v_c_count + 1;
-                ELSE
-                    v_d_count := v_d_count + 1;
-                END CASE;
+
             IF v_regis_id = v_ans THEN
                 v_true_count := v_true_count + 1;
             ELSIF  v_regis_id != v_ans THEN
@@ -146,32 +121,21 @@ BEGIN
                 v_other_ques := other_regis_rec.questionid;
             END IF;
         END LOOP;
-            
-        SELECT answer INTO v_ans_text
-        FROM answerbank
-        WHERE answerid = v_ans;
+        
+        ----Select answer text from answer id----
         SELECT answer INTO v_test_text
-        FROM answerbank
+        FROM answerbank 
         WHERE answerid = v_test;
-            
-        SELECT answer INTO v_a_text
-        FROM answerbank
-        WHERE answerid = v_a_id;
-        SELECT answer INTO v_b_text
-        FROM answerbank
-        WHERE answerid = v_b_id;
-        SELECT answer INTO v_c_text
-        FROM answerbank
-        WHERE answerid = v_c_id;
-        SELECT answer INTO v_d_text
-        FROM answerbank
-        WHERE answerid = v_d_id;
+        SELECT answer INTO v_ans_text
+        FROM answerbank 
+        WHERE answerid = v_ans;
+        
         DBMS_OUTPUT.PUT_LINE('');
         DBMS_OUTPUT.PUT_LINE('Chapter: ' || regisid_rec.chapter);
         DBMS_OUTPUT.PUT_LINE('Question: ' || regisid_rec.question);
         DBMS_OUTPUT.PUT_LINE('Correct answer: ' || v_ans_text);
         DBMS_OUTPUT.PUT_LINE('User answer: ' || v_test_text);
-        ----Count score----
+        ----Count score of select's user----
         IF regisid_rec.answer = regisid_rec.testanswer THEN 
             v_correct_count := v_correct_count + 1;
             DBMS_OUTPUT.PUT_LINE('User answer is correct');
@@ -183,43 +147,92 @@ BEGIN
         DBMS_OUTPUT.PUT_LINE('All users answer correct: ' || v_true_count);
         DBMS_OUTPUT.PUT_LINE('All users answer uncorrect: ' || v_false_count);
         DBMS_OUTPUT.PUT_LINE('-----All users choose------');
-        SORT_ANSWER(v_a_text,v_b_text,v_c_text,v_d_text,v_a_count,v_b_count,v_c_count,v_d_count);
+        SORT_ANSWER(regisid_rec.questionid,regisid_rec.testdate,regisid_rec.subjectcode);
     END LOOP;
     DBMS_OUTPUT.PUT_LINE('');
     DBMS_OUTPUT.PUT_LINE('Score of ' || regisid_rec.registrationno || ' is ' || v_correct_count || ' / ' ||  v_maxscore);
     CLOSE regisid_cur;
 END ANALYZE_TEST;
+----------------------------------------------------------------------------
+----Create obj for store answer----
+CREATE TYPE answer_obj_test IS OBJECT(
+    id_value NUMBER,
+    text_value VARCHAR2(4000),
+    count_value NUMBER
+    );
+/
+CREATE TYPE answer_table_test IS TABLE OF answer_obj_test;
+/
+CREATE OR REPLACE  PROCEDURE SORT_ANSWER (p_questionid questionbank.question%TYPE,
+                                          p_testdate registration.testdate%TYPE,
+                                          p_subcode registration.subjectcode%TYPE) IS    
+    answer_unsort answer_table_test := answer_table_test();
+    answer_sort answer_table_test := answer_table_test();
+    v_count NUMBER := 0;
+    v_count_answer NUMBER := 0;
+    v_count_answer_choose NUMBER := 0;
+    v_ans NUMBER := 0;
+    v_test NUMBER := 0;
+    v_count_loop NUMBER := 0;
+    
+    CURSOR other_regis_cur IS
+    SELECT qt.questionid,qt.testanswer,qt.answer,qt.a_id,qt.b_id,qt.c_id,qt.d_id,r.subjectcode,r.testdate
+    FROM registration r
+    JOIN questiontest qt ON r.registrationno = qt.registrationno
+    JOIN questionbank qb ON qt.questionid = qb.questionid;
+    
+    CURSOR answer_cur IS
+        SELECT answerid,answer
+        FROM answerbank
+        WHERE questionid =  p_questionid;
+    answer_rec answer_cur%ROWTYPE;
+BEGIN    
+    OPEN answer_cur;
 
-CREATE TYPE answer_obj IS OBJECT(
-    count_value NUMBER,
-    text_value VARCHAR2(4000));
-/
-CREATE TYPE answer_table IS TABLE OF answer_obj;
-/
-CREATE OR REPLACE  PROCEDURE SORT_ANSWER (p_a_text answerbank.answer%TYPE,p_b_text answerbank.answer%TYPE,
-                                          p_c_text answerbank.answer%TYPE,p_d_text answerbank.answer%TYPE,
-                                          p_a_count NUMBER,p_b_count NUMBER,p_c_count NUMBER,p_d_count NUMBER) IS
-    
-    answer_unsort answer_table := answer_table();
-    answer_sort answer_table := answer_table();
-    v_count NUMBER := 0; 
-BEGIN
-    answer_unsort.EXTEND(4);
-    
-    answer_unsort(1) := answer_obj(p_a_count,p_a_text);
-    answer_unsort(2) := answer_obj(p_b_count,p_b_text);
-    answer_unsort(3) := answer_obj(p_c_count,p_c_text);
-    answer_unsort(4) := answer_obj(p_d_count,p_d_text);
-    
+    SELECT COUNT(answerid) INTO v_count_answer
+    FROM answerbank
+    WHERE questionid =  p_questionid;
+    answer_unsort.EXTEND(v_count_answer);
+    ----Loop to find answer of question----
+    FOR i IN 1..v_count_answer LOOP
+        FETCH answer_cur INTO answer_rec;
+        answer_unsort(i) := answer_obj_test(answer_rec.answerid,answer_rec.answer,0);
+        v_count_answer_choose := 0;
+        ----Loop for count each answer at user select----
+        FOR other_regis_rec IN other_regis_cur LOOP
+            IF other_regis_rec.testdate = p_testdate AND
+               other_regis_rec.subjectcode = p_subcode THEN
+                    CASE
+                        WHEN other_regis_rec.testanswer = 'A' THEN
+                            v_test := other_regis_rec.a_id;
+                        WHEN other_regis_rec.testanswer = 'B' THEN
+                            v_test := other_regis_rec.b_id;
+                        WHEN other_regis_rec.testanswer = 'C' THEN
+                            v_test := other_regis_rec.c_id;
+                        ELSE
+                            v_test := other_regis_rec.d_id;
+                    END CASE;
+                IF v_test = answer_unsort(i).id_value THEN 
+                    v_count_answer_choose := v_count_answer_choose + 1;
+                END IF;
+                answer_unsort(i) := answer_obj_test(answer_unsort(i).id_value,
+                                                    answer_unsort(i).text_value,
+                                                    v_count_answer_choose);
+            END IF; 
+        END LOOP;
+    END LOOP;
+    ----Select to sorting----
     SELECT CAST(MULTISET(SELECT *
                 FROM TABLE(answer_unsort)
-                ORDER BY 1 DESC)AS answer_table)
+                ORDER BY 3 DESC)AS answer_table_test)
     INTO answer_sort
     FROM DUAL;
-     v_count := answer_sort.COUNT();
+    v_count := answer_sort.COUNT();
+    ----Print answer each question----
     FOR i IN 1..v_count LOOP
         DBMS_OUTPUT.PUT_LINE(answer_sort(i).text_value || ' : ' || answer_sort(i).count_value);
     END LOOP;
+    CLOSE answer_cur;
 END SORT_ANSWER;
 
 EXECUTE ANALYZE_TEST(300002);
