@@ -97,8 +97,8 @@ create or replace PROCEDURE ANALYZE_TEST(p_subcode registration.subjectcode%TYPE
         CLOSE regissub_cur;
         
         
-        --- Max Score each Chapter ---
-        
+    --- Max Score each Chapter ---
+    FOR i IN 1..3 LOOP    
         OPEN maxscorechap_cur(p_subcode);
         LOOP
         FETCH maxscorechap_cur INTO maxscorechap_rec;
@@ -161,9 +161,12 @@ create or replace PROCEDURE ANALYZE_TEST(p_subcode registration.subjectcode%TYPE
         
         END LOOP;
         
-
-        CLOSE maxscorechap_cur;
         DBMS_OUTPUT.PUT_LINE('Score of ' || regisid_rec.subjectcode || ' in chapter '|| v_chapter ||' is ' || v_correct_count_chap || ' / ' ||  v_maxscorechap);
+        CLOSE maxscorechap_cur;
+        v_chapter := v_chapter +1;
+        v_maxscorechap := 0;
+        v_correct_count_chap := 0;
+    END LOOP;    
         
         DBMS_OUTPUT.PUT_LINE('Score of ' || regisid_rec.subjectcode || ' is ' || v_correct_count || ' / ' ||  v_maxscore);
         
