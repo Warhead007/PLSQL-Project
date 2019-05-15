@@ -10,9 +10,9 @@ CREATE OR REPLACE PACKAGE PACKAGE_ANALYSIS IS
     PROCEDURE ANALYZE_TEST(p_registrationno registration.registrationno%TYPE);
     PROCEDURE ANALYZE_TEST(p_subcode registration.subjectcode%TYPE);
     PROCEDURE ANALYZE_TEST(p_subcode registration.subjectcode%TYPE,
-                            p_testdate registration.testdate%TYPE);
+                           p_testdate registration.testdate%TYPE);
 END PACKAGE_ANALYSIS;
-
+----------------------------------------------------------------------------------
 CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS   
     PROCEDURE SORT_ANSWER_1 (p_questionid questionbank.question%TYPE,
                              p_testdate registration.testdate%TYPE,
@@ -506,16 +506,12 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
             SELECT qt.questionid,qt.testanswer,qt.answer,qt.a_id,qt.b_id,qt.c_id,qt.d_id,r.subjectcode,r.testdate
             FROM registration r
             JOIN questiontest qt ON r.registrationno = qt.registrationno
-            JOIN questionbank qb ON qt.questionid = qb.questionid
-            WHERE r.testdate = p_testdate;
+            JOIN questionbank qb ON qt.questionid = qb.questionid;
         
         CURSOR answer_cur IS
-            SELECT ab.answerid,ab.answer
-            FROM answerbank ab
-            JOIN questiontest qt ON qt.questionid = ab.questionid
-            JOIN registration r ON r.registrationno = qt.registrationno
-            WHERE qt.questionid =  p_questionid
-            AND r.testdate = p_testdate;
+            SELECT answerid,answer
+            FROM answerbank
+            WHERE questionid =  p_questionid;
         answer_rec answer_cur%ROWTYPE;
     BEGIN    
         p_count_all_answer := 0;
@@ -533,7 +529,8 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
             v_count_answer_choose := 0;
             ----Loop for count each answer at user select----
             FOR other_regis_rec IN other_regis_cur LOOP
-                IF other_regis_rec.subjectcode = p_subcode THEN
+                IF other_regis_rec.subjectcode = p_subcode 
+                AND other_regis_rec.testdate = p_testdate THEN
                         CASE
                             WHEN other_regis_rec.testanswer = 'A' THEN
                                 v_test := other_regis_rec.a_id;
@@ -583,4 +580,4 @@ EXECUTE PACKAGE_ANALYSIS.ANALYZE_TEST(300001);
 
 EXECUTE PACKAGE_ANALYSIS.ANALYZE_TEST('INT102');
 
-EXECUTE PACKAGE_ANALYSIS.ANALYZE_TEST('INT102','02-Á.¤.-2019');
+EXECUTE PACKAGE_ANALYSIS.ANALYZE_TEST('INT102','02 Á.¤. 2019');
