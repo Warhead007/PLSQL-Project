@@ -234,21 +234,20 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
     END ANALYZE_TEST; 
     
     PROCEDURE ANALYZE_TEST(p_subcode registration.subjectcode%TYPE,
-                                               p_testdate registration.testdate%TYPE) IS
+                           p_testdate registration.testdate%TYPE) IS
         
-        CURSOR question_cur (p_chapter questionbank.chapter%TYPE,
-                             p_regisid registration.registrationno%TYPE) IS
-            SELECT qb.questionid,qb.question,r.registrationno
+        CURSOR question_cur (p_chapter questionbank.chapter%TYPE) IS
+            SELECT DISTINCT qb.questionid
             FROM questionbank qb
             JOIN questiontest qt ON qt.questionid = qb.questionid
             JOIN registration r ON r.registrationno = qt.registrationno
             WHERE qb.subjectcode = p_subcode 
             AND qb.chapter = p_chapter 
-            AND r.testdate = p_testdate
-            AND r.registrationno = p_regisid;
+            AND r.testdate = p_testdate;
         question_rec question_cur%ROWTYPE;
         
         v_regisid NUMBER := 0;
+        v_question questionbank.question%TYPE;
         v_ans NUMBER := 0;
         v_true_question NUMBER := 0;
         v_false_question NUMBER := 0;
@@ -266,19 +265,10 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
         DBMS_OUTPUT.PUT_LINE('Subject: ' || p_subcode || ' Date: ' || p_testdate);
         
         FOR i IN 1..v_max_chapter LOOP
-        
-            SELECT r.registrationno INTO v_regisid
-            FROM questionbank qb
-            JOIN questiontest qt ON qt.questionid = qb.questionid
-            JOIN registration r ON r.registrationno = qt.registrationno
-            WHERE qb.subjectcode = p_subcode 
-            AND qb.chapter = i 
-            AND r.testdate = p_testdate
-            AND ROWNUM = 1;
             
             v_true_chapter := 0;
             v_all_score_pre_chapter := 0;
-            OPEN question_cur(i,v_regisid);
+            OPEN question_cur(i);
             DBMS_OUTPUT.PUT_LINE('-------------------------------------');
             DBMS_OUTPUT.PUT_LINE('Chapter: ' || i);
             DBMS_OUTPUT.PUT_LINE('-------------------------------------');
@@ -295,8 +285,12 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
                 AND qt.answer = qt.testanswer
                 AND r.testdate = p_testdate;
                 EXIT WHEN question_cur%NOTFOUND;
-        
-                DBMS_OUTPUT.PUT_LINE(question_rec.questionid || '  ' || question_rec.question);
+                
+                SELECT question INTO v_question
+                FROM questionbank
+                WHERE questionid = question_rec.questionid;
+                
+                DBMS_OUTPUT.PUT_LINE(question_rec.questionid || '  ' || v_question);
                 SORT_ANSWER_3(question_rec.questionid,p_subcode,p_testdate,v_all_score_pre_question);
                 DBMS_OUTPUT.PUT_LINE('User correct answer: ' || v_true_question 
                                      || ' / ' || v_all_score_pre_question);
