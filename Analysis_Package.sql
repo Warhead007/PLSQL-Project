@@ -1,11 +1,14 @@
 SET serveroutput ON;
-TYPE answer_obj_test IS OBJECT(
+----Create type to collect answer for question----
+CREATE TYPE answer_obj_test IS OBJECT(
 id_value NUMBER,
 text_value VARCHAR2(4000),
 count_value NUMBER);
-/   
-TYPE answer_table_test IS TABLE OF answer_obj_test;
 /
+----Table for keep answer in array----
+CREATE TYPE answer_table_test IS TABLE OF answer_obj_test;
+/
+----------------------------------------------------------------------------------
 CREATE OR REPLACE PACKAGE PACKAGE_ANALYSIS IS
     PROCEDURE ANALYZE_TEST(p_registrationno registration.registrationno%TYPE);
     PROCEDURE ANALYZE_TEST(p_subcode registration.subjectcode%TYPE);
@@ -14,17 +17,17 @@ CREATE OR REPLACE PACKAGE PACKAGE_ANALYSIS IS
 END PACKAGE_ANALYSIS;
 ----------------------------------------------------------------------------------
 CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS   
-    PROCEDURE SORT_ANSWER_1 (p_questionid questionbank.question%TYPE,
-                             p_testdate registration.testdate%TYPE,
-                             p_subcode registration.subjectcode%TYPE);
-    PROCEDURE SORT_ANSWER_2 (p_questionid IN questionbank.question%TYPE,
-                             p_subcode IN registration.subjectcode%TYPE,
-                             p_count_all_answer OUT NUMBER);
-    PROCEDURE SORT_ANSWER_3 (p_questionid IN questionbank.question%TYPE,
-                             p_subcode IN registration.subjectcode%TYPE,
-                             p_testdate IN registration.testdate%TYPE,
-                             p_count_all_answer OUT NUMBER);
-    
+    PROCEDURE SORT_ANSWER (p_questionid questionbank.question%TYPE,
+                           p_testdate registration.testdate%TYPE,
+                           p_subcode registration.subjectcode%TYPE);
+    PROCEDURE SORT_ANSWER (p_questionid IN questionbank.question%TYPE,
+                           p_subcode IN registration.subjectcode%TYPE,
+                           p_count_all_answer OUT NUMBER);
+    PROCEDURE SORT_ANSWER (p_questionid IN questionbank.question%TYPE,
+                           p_subcode IN registration.subjectcode%TYPE,
+                           p_testdate IN registration.testdate%TYPE,
+                           p_count_all_answer OUT NUMBER);
+
     PROCEDURE ANALYZE_TEST(p_registrationno registration.registrationno%TYPE) IS
         v_correct_count NUMBER := 0;
         v_maxscore NUMBER := 0;
@@ -34,7 +37,7 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
         v_test NUMBER := 0;
         v_ans_text answerbank.answer%TYPE;
         v_test_text answerbank.answer%TYPE;
-    
+        ----Cursor for query select registrationno question and answer----
         CURSOR regisid_cur (p_registrationno_cur registration.registrationno%TYPE) IS
             SELECT r.subjectcode,r.testdate,qt.a_id,qt.b_id,qt.c_id,qt.d_id,qt.answer,
             qt.testanswer,qb.chapter,qt.questionid,qb.question,qt.registrationno
@@ -48,7 +51,7 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
         v_true_count NUMBER := 0;
         v_false_count NUMBER := 0;
         v_regis_id NUMBER := 0;
-    
+        ----Cursor for query other question and answer----
         CURSOR other_regis_cur IS
             SELECT r.subjectcode,r.testdate,qt.a_id,qt.b_id,qt.c_id,qt.d_id,
                    qt.answer,qt.testanswer,qt.questionid,qb.question,qt.registrationno
@@ -57,7 +60,7 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
             JOIN questionbank qb ON qt.questionid = qb.questionid;
         
     BEGIN
-        ----Select subject code for show----
+        ----Select subjectcode for show----
         SELECT subjectcode INTO v_sub
         FROM registration
         WHERE registrationno = p_registrationno;
@@ -69,7 +72,7 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
         LOOP
             FETCH regisid_cur INTO regisid_rec;
             EXIT WHEN regisid_cur%NOTFOUND;
-            ----Analysis answer of select's register----
+            ----Analysis answer of select register----
             IF regisid_rec.answer = 'A' THEN
                 v_ans := regisid_rec.a_id;
                 CASE
@@ -148,7 +151,7 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
             DBMS_OUTPUT.PUT_LINE('Chapter: ' || regisid_rec.chapter);
             DBMS_OUTPUT.PUT_LINE('Question: ' || regisid_rec.question);
             DBMS_OUTPUT.PUT_LINE('User answer: ' || v_test_text);
-            ----Count score of select's user----
+            ----Count score of select user----
             IF regisid_rec.answer = regisid_rec.testanswer THEN 
                 v_correct_count := v_correct_count + 1;
                 DBMS_OUTPUT.PUT_LINE('User answer is correct');
@@ -160,15 +163,20 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
             DBMS_OUTPUT.PUT_LINE('All users answer correct: ' || v_true_count);
             DBMS_OUTPUT.PUT_LINE('All users answer uncorrect: ' || v_false_count);
             DBMS_OUTPUT.PUT_LINE('-----All users choose------');
-            SORT_ANSWER_1(regisid_rec.questionid,regisid_rec.testdate,regisid_rec.subjectcode);
+            SORT_ANSWER(regisid_rec.questionid,regisid_rec.testdate,p_subcode => regisid_rec.subjectcode);
         END LOOP;
         DBMS_OUTPUT.PUT_LINE('');
         DBMS_OUTPUT.PUT_LINE('Score of ' || regisid_rec.registrationno || ' is ' || v_correct_count || ' / ' ||  v_maxscore);
         CLOSE regisid_cur;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            RAISE_APPLICATION_ERROR(-20001,'Invalid data. Plase try again.');
+        WHEN OTHERS THEN
+            RAISE_APPLICATION_ERROR(-20002,'Something went wrong. Plase try again.');
     END ANALYZE_TEST;
     
     PROCEDURE ANALYZE_TEST(p_subcode registration.subjectcode%TYPE) IS
-        
+        ----Cursor for query question----
         CURSOR question_cur (p_chapter questionbank.chapter%TYPE) IS
             SELECT questionid,question
             FROM questionbank
@@ -190,7 +198,7 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
         FROM questionbank
         WHERE subjectcode = p_subcode;
         DBMS_OUTPUT.PUT_LINE('Subject: ' || p_subcode);
-        
+        ----Loop for query pre chapter----
         FOR i IN 1..v_max_chapter LOOP
             v_true_chapter := 0;
             v_all_score_pre_chapter := 0;
@@ -203,14 +211,14 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
                 v_false_question := 0;
                 v_all_score_pre_question := 0;
                 FETCH question_cur INTO question_rec;
-                
+                ----Select for count correct question----
                 SELECT COUNT(registrationno) INTO v_true_question
                 FROM questiontest
                 WHERE questionid = question_rec.questionid  AND answer = testanswer;
     
                 EXIT WHEN question_cur%NOTFOUND;
                 DBMS_OUTPUT.PUT_LINE(question_rec.questionid || '  ' || question_rec.question);
-                SORT_ANSWER_2(question_rec.questionid,p_subcode,v_all_score_pre_question);
+                SORT_ANSWER(question_rec.questionid,p_subcode,p_count_all_answer => v_all_score_pre_question);
                 DBMS_OUTPUT.PUT_LINE('User correct answer: ' || v_true_question 
                                      || ' / ' || v_all_score_pre_question);
                 v_false_question := v_all_score_pre_question - v_true_question;
@@ -231,11 +239,16 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
             DBMS_OUTPUT.PUT_LINE('Score of subject ' || p_subcode
                                  || ': ' || v_true_subject 
                                  || ' / ' || v_all_score_subject);
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            RAISE_APPLICATION_ERROR(-20001,'Invalid data. Plase try again.');
+        WHEN OTHERS THEN
+            RAISE_APPLICATION_ERROR(-20002,'Something went wrong. Plase try again.');
     END ANALYZE_TEST; 
     
     PROCEDURE ANALYZE_TEST(p_subcode registration.subjectcode%TYPE,
                            p_testdate registration.testdate%TYPE) IS
-        
+        ----Cursor for query question----
         CURSOR question_cur (p_chapter questionbank.chapter%TYPE) IS
             SELECT DISTINCT qb.questionid
             FROM questionbank qb
@@ -263,9 +276,8 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
         FROM questionbank
         WHERE subjectcode = p_subcode;
         DBMS_OUTPUT.PUT_LINE('Subject: ' || p_subcode || ' Date: ' || p_testdate);
-        
-        FOR i IN 1..v_max_chapter LOOP
-            
+        ----Loop for print pre chapter----
+        FOR i IN 1..v_max_chapter LOOP 
             v_true_chapter := 0;
             v_all_score_pre_chapter := 0;
             OPEN question_cur(i);
@@ -277,7 +289,7 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
                 v_false_question := 0;
                 v_all_score_pre_question := 0;
                 FETCH question_cur INTO question_rec;
-                
+                ----Select for count correct question----
                 SELECT COUNT(r.registrationno) INTO v_true_question
                 FROM questiontest qt
                 JOIN registration r ON r.registrationno = qt.registrationno
@@ -285,13 +297,13 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
                 AND qt.answer = qt.testanswer
                 AND r.testdate = p_testdate;
                 EXIT WHEN question_cur%NOTFOUND;
-                
+                ----Select for query only one question in this loop----
                 SELECT question INTO v_question
                 FROM questionbank
                 WHERE questionid = question_rec.questionid;
                 
                 DBMS_OUTPUT.PUT_LINE(question_rec.questionid || '  ' || v_question);
-                SORT_ANSWER_3(question_rec.questionid,p_subcode,p_testdate,v_all_score_pre_question);
+                SORT_ANSWER(question_rec.questionid,p_subcode,p_testdate,p_count_all_answer => v_all_score_pre_question);
                 DBMS_OUTPUT.PUT_LINE('User correct answer: ' || v_true_question 
                                      || ' / ' || v_all_score_pre_question);
                 v_false_question := v_all_score_pre_question - v_true_question;
@@ -312,9 +324,15 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
                                  || ': ' || v_true_subject 
                                  || ' / ' || v_all_score_subject || ' in date: '
                                  || p_testdate);
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            RAISE_APPLICATION_ERROR(-20001,'Invalid data. Plase try again.');
+        WHEN OTHERS THEN
+            RAISE_APPLICATION_ERROR(-20002,'Something went wrong. Plase try again.');
     END ANALYZE_TEST;
     
-    PROCEDURE SORT_ANSWER_1 (p_questionid questionbank.question%TYPE,
+    ----SORT_ANSWER for using in analysis with registrationno----
+    PROCEDURE SORT_ANSWER   (p_questionid questionbank.question%TYPE,
                              p_testdate registration.testdate%TYPE,
                              p_subcode registration.subjectcode%TYPE) IS    
         answer_unsort answer_table_test := answer_table_test();
@@ -326,13 +344,14 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
         v_test NUMBER := 0;
         v_count_loop NUMBER := 0;
         v_answer_check NUMBER := 0;
-        
+        ----Cursor for query question of questiontest----
         CURSOR other_regis_cur IS
         SELECT qt.questionid,qt.testanswer,qt.answer,qt.a_id,qt.b_id,qt.c_id,qt.d_id,r.subjectcode,r.testdate
         FROM registration r
         JOIN questiontest qt ON r.registrationno = qt.registrationno
         JOIN questionbank qb ON qt.questionid = qb.questionid;
         
+        ----Cursor for query each answer pre question---- 
         CURSOR answer_cur IS
             SELECT answerid,answer
             FROM answerbank
@@ -395,9 +414,10 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
             END IF;
         END LOOP;
         CLOSE answer_cur;
-    END SORT_ANSWER_1;
+    END SORT_ANSWER;
     
-    PROCEDURE SORT_ANSWER_2 (p_questionid IN questionbank.question%TYPE,
+    ----SORT_ANSWER for using in analysis with subjectcode----
+    PROCEDURE SORT_ANSWER   (p_questionid IN questionbank.question%TYPE,
                              p_subcode IN registration.subjectcode%TYPE,
                              p_count_all_answer OUT NUMBER) IS    
         answer_unsort answer_table_test := answer_table_test();
@@ -409,13 +429,13 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
         v_test NUMBER := 0;
         v_count_loop NUMBER := 0;
         v_answer_check NUMBER := 0;
-        
+        ----Cursor for query question of questiontest----
         CURSOR other_regis_cur IS
             SELECT qt.questionid,qt.testanswer,qt.answer,qt.a_id,qt.b_id,qt.c_id,qt.d_id,r.subjectcode,r.testdate
             FROM registration r
             JOIN questiontest qt ON r.registrationno = qt.registrationno
             JOIN questionbank qb ON qt.questionid = qb.questionid;
-        
+        ----Cursor for query answer pre question----
         CURSOR answer_cur IS
             SELECT answerid,answer
             FROM answerbank
@@ -480,9 +500,10 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
             END IF;
         END LOOP;
     CLOSE answer_cur;
-    END SORT_ANSWER_2;
-
-    PROCEDURE SORT_ANSWER_3 (p_questionid IN questionbank.question%TYPE,
+    END SORT_ANSWER;
+    
+    ----SORT_ANSWER for using in analysis with subjectcode and testdate----
+    PROCEDURE SORT_ANSWER (p_questionid IN questionbank.question%TYPE,
                              p_subcode IN registration.subjectcode%TYPE,
                              p_testdate IN registration.testdate%TYPE,
                              p_count_all_answer OUT NUMBER) IS    
@@ -495,13 +516,13 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
         v_test NUMBER := 0;
         v_count_loop NUMBER := 0;
         v_answer_check NUMBER := 0;
-        
+        ----Cursor for query question of questiontest----
         CURSOR other_regis_cur IS
             SELECT qt.questionid,qt.testanswer,qt.answer,qt.a_id,qt.b_id,qt.c_id,qt.d_id,r.subjectcode,r.testdate
             FROM registration r
             JOIN questiontest qt ON r.registrationno = qt.registrationno
             JOIN questionbank qb ON qt.questionid = qb.questionid;
-        
+        ----Cursor for query answer pre question----
         CURSOR answer_cur IS
             SELECT answerid,answer
             FROM answerbank
@@ -567,11 +588,11 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
             END IF;
         END LOOP;
     CLOSE answer_cur;
-    END SORT_ANSWER_3;
+    END SORT_ANSWER;
 END PACKAGE_ANALYSIS;
 
-EXECUTE PACKAGE_ANALYSIS.ANALYZE_TEST(300001);
+EXECUTE PACKAGE_ANALYSIS.ANALYZE_TEST(300003);
 
 EXECUTE PACKAGE_ANALYSIS.ANALYZE_TEST('INT102');
 
-EXECUTE PACKAGE_ANALYSIS.ANALYZE_TEST('INT102','02 Á.¤. 2019');
+EXECUTE PACKAGE_ANALYSIS.ANALYZE_TEST('INT102','01 Á.¤. 2019');
