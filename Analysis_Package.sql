@@ -116,22 +116,29 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
             SELECT answer INTO v_ans_text
             FROM answerbank 
             WHERE answerid = v_ans;
-            
             DBMS_OUTPUT.PUT_LINE('');
+            DBMS_OUTPUT.PUT_LINE('');
+            DBMS_OUTPUT.PUT_LINE('-------------------------------------');
             DBMS_OUTPUT.PUT_LINE('Chapter: ' || regisid_rec.chapter);
-            DBMS_OUTPUT.PUT_LINE('Question: ' || regisid_rec.question);
-            DBMS_OUTPUT.PUT_LINE('User answer: ' || v_test_text);
+            DBMS_OUTPUT.PUT_LINE('['||regisid_rec.questionid|| '] ' ||'Question: ' || regisid_rec.question);
+            DBMS_OUTPUT.PUT_LINE('User answer : ' || '{ ' || v_test_text || ' }');
             ----Count score of select user----
             IF regisid_rec.answer = regisid_rec.testanswer THEN 
-                DBMS_OUTPUT.PUT_LINE('User answer is correct');
+                DBMS_OUTPUT.PUT_LINE('User answer is { correct }');
+                DBMS_OUTPUT.PUT_LINE('');
             ELSE
-                DBMS_OUTPUT.PUT_LINE('User answer is uncorrect');
+                DBMS_OUTPUT.PUT_LINE('User answer is { uncorrect }');
+                DBMS_OUTPUT.PUT_LINE('');
             END IF;
             DBMS_OUTPUT.PUT_LINE('-----All users result------');
-            DBMS_OUTPUT.PUT_LINE('All users answer correct: ' || v_true_count);
-            DBMS_OUTPUT.PUT_LINE('All users answer uncorrect: ' || v_false_count);
+            DBMS_OUTPUT.PUT_LINE('All users answer correct : ' || '{' || v_true_count || '}');
+            DBMS_OUTPUT.PUT_LINE('All users answer uncorrect : ' || '{' || v_false_count|| '}');
+            DBMS_OUTPUT.PUT_LINE('---------------------------');
+            DBMS_OUTPUT.PUT_LINE('');
             DBMS_OUTPUT.PUT_LINE('-----All users choose------');
             SORT_ANSWER(regisid_rec.questionid,regisid_rec.subjectcode,v_only_store_value,regisid_rec.testdate);
+            DBMS_OUTPUT.PUT_LINE('-------------------------------------');
+            DBMS_OUTPUT.PUT_LINE('');
         END LOOP;
         CLOSE regisid_cur;
     EXCEPTION
@@ -141,6 +148,9 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
             RAISE_APPLICATION_ERROR(-20002,'Something went wrong. Plase try again.');
     END ANALYZE_TEST;
     
+    
+    
+    --- Subject Code ---
     PROCEDURE ANALYZE_TEST(p_subcode registration.subjectcode%TYPE) IS
         ----Cursor for query question----
         CURSOR question_cur (p_chapter questionbank.chapter%TYPE) IS
@@ -163,6 +173,7 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
         ----Loop for query pre chapter----
         FOR i IN 1..v_max_chapter LOOP
             OPEN question_cur(i);
+            DBMS_OUTPUT.PUT_LINE('');
             DBMS_OUTPUT.PUT_LINE('-------------------------------------');
             DBMS_OUTPUT.PUT_LINE('Chapter: ' || i);
             DBMS_OUTPUT.PUT_LINE('-------------------------------------');
@@ -177,14 +188,21 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
                 WHERE questionid = question_rec.questionid  AND answer = testanswer;
     
                 EXIT WHEN question_cur%NOTFOUND;
-                DBMS_OUTPUT.PUT_LINE(question_rec.questionid || '  ' || question_rec.question);
-                SORT_ANSWER(question_rec.questionid,p_subcode,v_all_score_pre_question);
-                DBMS_OUTPUT.PUT_LINE('User correct answer: ' || v_true_question 
-                                     || ' / ' || v_all_score_pre_question);
-                v_false_question := v_all_score_pre_question - v_true_question;
-                DBMS_OUTPUT.PUT_LINE('User uncorrect answer: ' || v_false_question 
-                                    || ' / ' || v_all_score_pre_question);
+                DBMS_OUTPUT.PUT_LINE('');
                 DBMS_OUTPUT.PUT_LINE('-------------------------------------');
+                DBMS_OUTPUT.PUT_LINE('[' ||question_rec.questionid || ']' || '  ' || question_rec.question);
+                DBMS_OUTPUT.PUT_LINE('--- User answer --- ');
+                SORT_ANSWER(question_rec.questionid,p_subcode,v_all_score_pre_question);
+                DBMS_OUTPUT.PUT_LINE('');
+                DBMS_OUTPUT.PUT_LINE('');
+                DBMS_OUTPUT.PUT_LINE('[Number of correct and incorrect answer]');
+                DBMS_OUTPUT.PUT_LINE('User correct answer: ' || ' {' || v_true_question 
+                                     || ' / ' || v_all_score_pre_question || '} ');
+                v_false_question := v_all_score_pre_question - v_true_question;
+                DBMS_OUTPUT.PUT_LINE('User uncorrect answer: ' || ' {' || v_false_question 
+                                    || ' / ' || v_all_score_pre_question || '} ');
+                DBMS_OUTPUT.PUT_LINE('-------------------------------------');
+                DBMS_OUTPUT.PUT_LINE('');
     
             END LOOP;
             CLOSE question_cur;
@@ -195,7 +213,10 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
         WHEN OTHERS THEN
             RAISE_APPLICATION_ERROR(-20002,'Something went wrong. Plase try again.');
     END ANALYZE_TEST; 
-    
+
+
+
+--- Subject Code and Test Date ---    
     PROCEDURE ANALYZE_TEST(p_subcode registration.subjectcode%TYPE,
                            p_testdate registration.testdate%TYPE) IS
         ----Cursor for query question----
@@ -223,6 +244,7 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
         ----Loop for print pre chapter----
         FOR i IN 1..v_max_chapter LOOP 
             OPEN question_cur(i);
+            DBMS_OUTPUT.PUT_LINE('');
             DBMS_OUTPUT.PUT_LINE('-------------------------------------');
             DBMS_OUTPUT.PUT_LINE('Chapter: ' || i);
             DBMS_OUTPUT.PUT_LINE('-------------------------------------');
@@ -243,15 +265,21 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
                 SELECT question INTO v_question
                 FROM questionbank
                 WHERE questionid = question_rec.questionid;
-                
-                DBMS_OUTPUT.PUT_LINE(question_rec.questionid || '  ' || v_question);
-                SORT_ANSWER(question_rec.questionid,p_subcode,v_all_score_pre_question,p_testdate);
-                DBMS_OUTPUT.PUT_LINE('User correct answer: ' || v_true_question 
-                                     || ' / ' || v_all_score_pre_question);
-                v_false_question := v_all_score_pre_question - v_true_question;
-                DBMS_OUTPUT.PUT_LINE('User uncorrect answer: ' || v_false_question 
-                                     || ' / ' || v_all_score_pre_question);
+                DBMS_OUTPUT.PUT_LINE('');
                 DBMS_OUTPUT.PUT_LINE('-------------------------------------');
+                DBMS_OUTPUT.PUT_LINE('['|| question_rec.questionid ||']' ||'  ' || v_question);
+                DBMS_OUTPUT.PUT_LINE('--- User answer --- ');
+                SORT_ANSWER(question_rec.questionid,p_subcode,v_all_score_pre_question,p_testdate);
+                DBMS_OUTPUT.PUT_LINE('');
+                DBMS_OUTPUT.PUT_LINE('');
+                DBMS_OUTPUT.PUT_LINE('[Number of correct and incorrect answer]');
+                DBMS_OUTPUT.PUT_LINE('User correct answer: ' ||' {' || v_true_question 
+                                     || ' / ' || v_all_score_pre_question|| '}');
+                v_false_question := v_all_score_pre_question - v_true_question;
+                DBMS_OUTPUT.PUT_LINE('User uncorrect answer: ' ||' {' ||v_false_question 
+                                     || ' / ' || v_all_score_pre_question || '}');
+                DBMS_OUTPUT.PUT_LINE('-------------------------------------');
+                DBMS_OUTPUT.PUT_LINE('');
             END LOOP;
             CLOSE question_cur;
         END LOOP;
@@ -406,4 +434,3 @@ EXECUTE PACKAGE_ANALYSIS.ANALYZE_TEST(300003);
 EXECUTE PACKAGE_ANALYSIS.ANALYZE_TEST('INT102');
 
 EXECUTE PACKAGE_ANALYSIS.ANALYZE_TEST('INT102','01-MAY-2019');
-
