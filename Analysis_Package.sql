@@ -26,6 +26,7 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
     FUNCTION CHECK_ANSWER(p_questionid questionbank.questionid%TYPE,
                           p_answer answerbank.answer%TYPE,
                           p_regisid registration.registrationno%TYPE) RETURN NUMBER;
+    FUNCTION MAX_CHAPTER(p_subcode questionbank.subjectcode%TYPE) RETURN NUMBER;
 
     PROCEDURE ANALYZE_TEST(p_registrationno registration.registrationno%TYPE) IS
         v_maxscore NUMBER := 0;
@@ -64,12 +65,12 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
         SELECT subjectcode INTO v_sub
         FROM registration
         WHERE registrationno = p_registrationno;
-        ----Create function----
+        ----Select correct score of registrater----
         SELECT COUNT(questionid) INTO v_correct
         FROM questiontest
         WHERE answer = testanswer
         AND registrationno = p_registrationno;
-        
+        ----Select max score of registrater----
         SELECT COUNT(questionid) INTO v_maxscore
         FROM questiontest
         WHERE registrationno = p_registrationno;
@@ -108,10 +109,10 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
              END LOOP;
                 
             ----Select answer text from answer id----
-            ----Create function----
             SELECT answer INTO v_test_text
             FROM answerbank 
             WHERE answerid = v_test;
+            
             SELECT answer INTO v_ans_text
             FROM answerbank 
             WHERE answerid = v_ans;
@@ -143,9 +144,11 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
     PROCEDURE ANALYZE_TEST(p_subcode registration.subjectcode%TYPE) IS
         ----Cursor for query question----
         CURSOR question_cur (p_chapter questionbank.chapter%TYPE) IS
-            SELECT questionid,question
-            FROM questionbank
-            WHERE subjectcode = p_subcode AND chapter = p_chapter;
+            SELECT DISTINCT qt.questionid,qb.question
+            FROM questionbank qb
+            JOIN questiontest qt ON qt.questionid = qb.questionid
+            WHERE subjectcode = p_subcode AND chapter = p_chapter
+            ORDER BY qt.questionid;
         question_rec question_cur%ROWTYPE;
         
         v_ans NUMBER := 0;
@@ -155,10 +158,7 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
         v_max_chapter NUMBER := 0;
         v_subjectcode registration.subjectcode%TYPE := p_subcode;
     BEGIN
-        ----Create function----
-        SELECT MAX(chapter) INTO v_max_chapter
-        FROM questionbank
-        WHERE subjectcode = p_subcode;
+        v_max_chapter := MAX_CHAPTER(p_subcode);
         DBMS_OUTPUT.PUT_LINE('Subject: ' || p_subcode);
         ----Loop for query pre chapter----
         FOR i IN 1..v_max_chapter LOOP
@@ -218,10 +218,7 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
         v_max_chapter NUMBER := 0;
         v_subjectcode registration.subjectcode%TYPE := p_subcode;
     BEGIN
-        ----Create function----
-        SELECT MAX(chapter) INTO v_max_chapter
-        FROM questionbank
-        WHERE subjectcode = p_subcode;
+        v_max_chapter := MAX_CHAPTER(p_subcode);
         DBMS_OUTPUT.PUT_LINE('Subject: ' || p_subcode || ' Date: ' || p_testdate);
         ----Loop for print pre chapter----
         FOR i IN 1..v_max_chapter LOOP 
@@ -266,12 +263,17 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
     END ANALYZE_TEST;
     
     ----Procedure for query answer per question, count per answer user choose----
+    
     PROCEDURE SORT_ANSWER (p_questionid IN questionbank.question%TYPE,
                            p_subcode IN registration.subjectcode%TYPE,
                            p_count_all_answer OUT NUMBER,
-                           p_testdate IN registration.testdate%TYPE DEFAULT NULL) IS    
+                           p_testdate IN registration.testdate%TYPE DEFAULT NULL) IS   
+        v_correct_answer_type NUMBER := 1;
+        v_uncorrect_answer_type NUMBER := 2;
+        
         answer_unsort answer_table_test := answer_table_test();
         answer_sort answer_table_test := answer_table_test();
+        
         v_count NUMBER := 0;
         v_count_answer NUMBER := 0;
         v_count_answer_choose NUMBER := 0;
@@ -350,10 +352,10 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
             SELECT answertype INTO v_answer_check 
             FROM answerbank
             WHERE answerid = answer_sort(i).id_value;
-            IF v_answer_check = 1 THEN
+            IF v_answer_check = v_correct_answer_type THEN
                 DBMS_OUTPUT.PUT_LINE(answer_sort(i).text_value || ' : '
                                      || answer_sort(i).count_value || ' is answer correct.');
-            ELSIF v_answer_check = 2 THEN
+            ELSIF v_answer_check = v_uncorrect_answer_type THEN
                 DBMS_OUTPUT.PUT_LINE(answer_sort(i).text_value || ' : '
                                      || answer_sort(i).count_value || ' is answer uncorrect.');
             END IF;
@@ -388,14 +390,20 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
         END CASE;
         RETURN v_test;
     END CHECK_ANSWER;
+    
+    FUNCTION MAX_CHAPTER(p_subcode questionbank.subjectcode%TYPE) RETURN NUMBER IS
+        v_max_chapter NUMBER;    
+    BEGIN
+        SELECT MAX(chapter) INTO v_max_chapter
+        FROM questionbank
+        WHERE subjectcode = p_subcode;
+        RETURN v_max_chapter;
+    END MAX_CHAPTER;
 END PACKAGE_ANALYSIS;
 
 EXECUTE PACKAGE_ANALYSIS.ANALYZE_TEST(300003);
 
 EXECUTE PACKAGE_ANALYSIS.ANALYZE_TEST('INT102');
 
-EXECUTE PACKAGE_ANALYSIS.ANALYZE_TEST('INT102','01 Á.¤. 2019');
+EXECUTE PACKAGE_ANALYSIS.ANALYZE_TEST('INT102','01-MAY-2019');
 
-SELECT COUNT(questionid)
-        FROM questiontest
-        WHERE registrationno = 300001;
