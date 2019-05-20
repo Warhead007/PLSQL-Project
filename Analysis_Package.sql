@@ -118,7 +118,7 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
             WHERE answerid = v_ans;
             DBMS_OUTPUT.PUT_LINE('');
             DBMS_OUTPUT.PUT_LINE('');
-            DBMS_OUTPUT.PUT_LINE('-------------------------------------');
+            DBMS_OUTPUT.PUT_LINE('------------------------------------------------------------------');
             DBMS_OUTPUT.PUT_LINE('Chapter: ' || regisid_rec.chapter);
             DBMS_OUTPUT.PUT_LINE('['||regisid_rec.questionid|| '] ' ||'Question: ' || regisid_rec.question);
             DBMS_OUTPUT.PUT_LINE('User answer : ' || '{ ' || v_test_text || ' }');
@@ -137,7 +137,7 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
             DBMS_OUTPUT.PUT_LINE('');
             DBMS_OUTPUT.PUT_LINE('-----All users choose------');
             SORT_ANSWER(regisid_rec.questionid,regisid_rec.subjectcode,v_only_store_value,regisid_rec.testdate);
-            DBMS_OUTPUT.PUT_LINE('-------------------------------------');
+            DBMS_OUTPUT.PUT_LINE('------------------------------------------------------------------');
             DBMS_OUTPUT.PUT_LINE('');
         END LOOP;
         CLOSE regisid_cur;
@@ -189,7 +189,7 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
     
                 EXIT WHEN question_cur%NOTFOUND;
                 DBMS_OUTPUT.PUT_LINE('');
-                DBMS_OUTPUT.PUT_LINE('-------------------------------------');
+                DBMS_OUTPUT.PUT_LINE('------------------------------------------------------------------');
                 DBMS_OUTPUT.PUT_LINE('[' ||question_rec.questionid || ']' || '  ' || question_rec.question);
                 DBMS_OUTPUT.PUT_LINE('--- User answer --- ');
                 SORT_ANSWER(question_rec.questionid,p_subcode,v_all_score_pre_question);
@@ -201,7 +201,7 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
                 v_false_question := v_all_score_pre_question - v_true_question;
                 DBMS_OUTPUT.PUT_LINE('User uncorrect answer: ' || ' {' || v_false_question 
                                     || ' / ' || v_all_score_pre_question || '} ');
-                DBMS_OUTPUT.PUT_LINE('-------------------------------------');
+                DBMS_OUTPUT.PUT_LINE('------------------------------------------------------------------');
                 DBMS_OUTPUT.PUT_LINE('');
     
             END LOOP;
@@ -266,7 +266,7 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
                 FROM questionbank
                 WHERE questionid = question_rec.questionid;
                 DBMS_OUTPUT.PUT_LINE('');
-                DBMS_OUTPUT.PUT_LINE('-------------------------------------');
+                DBMS_OUTPUT.PUT_LINE('------------------------------------------------------------------');
                 DBMS_OUTPUT.PUT_LINE('['|| question_rec.questionid ||']' ||'  ' || v_question);
                 DBMS_OUTPUT.PUT_LINE('--- User answer --- ');
                 SORT_ANSWER(question_rec.questionid,p_subcode,v_all_score_pre_question,p_testdate);
@@ -278,7 +278,7 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
                 v_false_question := v_all_score_pre_question - v_true_question;
                 DBMS_OUTPUT.PUT_LINE('User uncorrect answer: ' ||' {' ||v_false_question 
                                      || ' / ' || v_all_score_pre_question || '}');
-                DBMS_OUTPUT.PUT_LINE('-------------------------------------');
+                DBMS_OUTPUT.PUT_LINE('------------------------------------------------------------------');
                 DBMS_OUTPUT.PUT_LINE('');
             END LOOP;
             CLOSE question_cur;
@@ -417,7 +417,7 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
         END CASE;
         RETURN v_test;
     END CHECK_ANSWER;
-    
+    ----Function for query max chapter of subjectcode----
     FUNCTION MAX_CHAPTER(p_subcode questionbank.subjectcode%TYPE) RETURN NUMBER IS
         v_max_chapter NUMBER;    
     BEGIN
