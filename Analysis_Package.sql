@@ -127,12 +127,12 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
                 DBMS_OUTPUT.PUT_LINE('User answer is { correct }');
                 DBMS_OUTPUT.PUT_LINE('');
             ELSE
-                DBMS_OUTPUT.PUT_LINE('User answer is { uncorrect }');
+                DBMS_OUTPUT.PUT_LINE('User answer is { incorrect }');
                 DBMS_OUTPUT.PUT_LINE('');
             END IF;
             DBMS_OUTPUT.PUT_LINE('-----All users result------');
             DBMS_OUTPUT.PUT_LINE('All users answer correct : ' || '{' || v_true_count || '}');
-            DBMS_OUTPUT.PUT_LINE('All users answer uncorrect : ' || '{' || v_false_count|| '}');
+            DBMS_OUTPUT.PUT_LINE('All users answer incorrect : ' || '{' || v_false_count|| '}');
             DBMS_OUTPUT.PUT_LINE('---------------------------');
             DBMS_OUTPUT.PUT_LINE('');
             DBMS_OUTPUT.PUT_LINE('-----All users choose------');
@@ -143,9 +143,9 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
         CLOSE regisid_cur;
     EXCEPTION
         WHEN NO_DATA_FOUND THEN
-            RAISE_APPLICATION_ERROR(-20001,'Invalid data. Plase try again.');
+            RAISE_APPLICATION_ERROR(-20001,'Invalid data. Please try again.');
         WHEN OTHERS THEN
-            RAISE_APPLICATION_ERROR(-20002,'Something went wrong. Plase try again.');
+            RAISE_APPLICATION_ERROR(-20002,'Something went wrong. Please try again.');
     END ANALYZE_TEST;
     
     
@@ -381,11 +381,10 @@ CREATE OR REPLACE PACKAGE BODY PACKAGE_ANALYSIS IS
             FROM answerbank
             WHERE answerid = answer_sort(i).id_value;
             IF v_answer_check = v_correct_answer_type THEN
-                DBMS_OUTPUT.PUT_LINE(answer_sort(i).text_value || ' : '
-                                     || answer_sort(i).count_value || ' is answer correct.');
+                DBMS_OUTPUT.PUT_LINE(answer_sort(i).text_value || ' : '||'{'||answer_sort(i).count_value ||'}'|| ' is answer [correct.]');
+                
             ELSIF v_answer_check = v_uncorrect_answer_type THEN
-                DBMS_OUTPUT.PUT_LINE(answer_sort(i).text_value || ' : '
-                                     || answer_sort(i).count_value || ' is answer uncorrect.');
+                DBMS_OUTPUT.PUT_LINE(answer_sort(i).text_value || ' : '||'{'|| answer_sort(i).count_value ||'}'|| ' is answer [incorrect.]');
             END IF;
         END LOOP;
     CLOSE answer_cur;
